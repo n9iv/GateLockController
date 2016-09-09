@@ -67,6 +67,13 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 struct RfidCode r;
 int c = 0;
 
+/*
+ * The loop function reads an RFID code (14 bytes) and then handles it according to its internal state machine.
+ * The state machine has to following states:
+*   start = no known card was read. in this stage, the code is compared to one of the controlling cards and if its not, the program checks if its a valid code and opens the door
+*   Register = The previous card was a Register control card which indicates that the next card will be registered as a valid card
+*   Unregister = The previous card was an Unregister control card which indicates that the next valid card will be unregistered
+ */
 void loop() {
   if(RFID.available() >0)
   {
@@ -76,7 +83,8 @@ void loop() {
     if(c==RFID_SIZE) {
       printCode(r);
       if(IsControlCode(r))
-        Serial.print(" Found Controlling code" );
+        Serial.print(" Found Controlling code, replace with new RFID Card" );
+        
       Serial.print("\n");
       c=0;
       delay(150);
