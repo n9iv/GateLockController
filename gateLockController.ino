@@ -13,7 +13,7 @@ void setup() {
 
 // Returns true if the specified value is one of the codes in the EEPROM
 bool IsValidCode(char* v) {
-  
+  return true;  
 }
 
 void checkCode(char* v) {
