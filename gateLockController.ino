@@ -4,6 +4,7 @@
 SoftwareSerial RFID(2,3);
 
 #define RFID_SIZE 14
+#define GATE_CONTROL_PIN 4
 
 struct RfidCode {
   char v[RFID_SIZE];
@@ -24,6 +25,8 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   RFID.begin(9600);
+
+  pinMode(GATE_CONTROL_PIN, OUTPUT);  
 }
 
 // Reutnrs true if a and b are matched by byte comparison. 
@@ -64,15 +67,26 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 }
 
 
+void openGate() {
+  Serial.print("Opening Gate");
+
+  digitalWrite(GATE_CONTROL_PIN, HIGH);
+  delay(10000);
+  digitalWrite(GATE_CONTROL_PIN, LOW);
+}
+
 struct RfidCode r;
 int c = 0;
 
 /*
  * The loop function reads an RFID code (14 bytes) and then handles it according to its internal state machine.
  * The state machine has to following states:
-*   start = no known card was read. in this stage, the code is compared to one of the controlling cards and if its not, the program checks if its a valid code and opens the door
+*   Start = no known card was read. in this stage, the code is compared to one of the controlling cards and if its not, the program checks if its a valid code and opens the door
 *   Register = The previous card was a Register control card which indicates that the next card will be registered as a valid card
 *   Unregister = The previous card was an Unregister control card which indicates that the next valid card will be unregistered
+*   
+*   in the Start state every code should be read at least 3 consecuteve times to be considered as read 
+*   In the Register and Unregister states, every code should be read at least 10 times
  */
 void loop() {
   if(RFID.available() >0)
@@ -82,9 +96,12 @@ void loop() {
     c++;
     if(c==RFID_SIZE) {
       printCode(r);
-      if(IsControlCode(r))
+      // TODO: support state machine. add robustness by reading the same code several times for it to be considered as "read"
+      if(IsControlCode(r)) {
         Serial.print(" Found Controlling code, replace with new RFID Card" );
-        
+        openGate();
+        RFID.flush(); // Flush all serial bytes read, otherwise, the controller will keep openning the door according to correcrt RFID Codes that remains in his buffer
+      }
       Serial.print("\n");
       c=0;
       delay(150);
