@@ -1,15 +1,42 @@
+/* Connections:
+ * Yellow   = Digital4 to RelayIn1
+ * Green    = Digital2 to RF control
+ * Red      = 5v to RF 5v to Relay 5V
+ * Blue     = GND to RF GND to Relay GND
+ * 
+ * Brown    = Relay Middle to 
+ */
+
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 
 SoftwareSerial RFID(2,3);
 
-#define RFID_SIZE 14
+#define RFID_SIZE 14 // in bytes
 #define GATE_CONTROL_PIN 4
 
 struct RfidCode {
   char v[RFID_SIZE];
 };
+
+
+struct RfidCode expected[] = { 
+                              {57,49,66,67,49,66,3,2,49,48,48,48,50,54}, // 0002527676
+                              {69,52,69,68,56,52,3,2,48,68,48,48,56,48}, // 0008447213
+                              {49,53,48,56,53,56,3,2,48,70,48,48,52,65}, // 0004855048
+                              {48,49,54,56,53,70,3,2,49,48,48,48,50,54}, // 0002490728
+                              {48,68,70,67,67,55,3,2,49,48,48,48,50,54}, // 0002493948
+                              {68,67,66,65,69,65,3,2,48,68,48,48,56,49}, // 0008510650
+                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776
+                              {52,49,49,52,54,51,3,2,49,48,48,48,50,54}, // 0002507028
+                              {65,69,49,54,51,52,3,2,48,68,48,48,56,49}, // 0008498710
+                              {51,52,51,51,51,49,3,2,49,48,48,48,50,54}, // 0002503731
+                              {65,69,55,56,50,54,3,2,56,53,48,48,55,53}  // Ad's key
+                             };
+// !!! DELETE THE RETURN TO BE DETECT NEW CODE NUMBER
 void printCode(struct RfidCode& code) {
+  return; 
+  
   Serial.print("{");
   for(int i=0; i<RFID_SIZE-1; i++) {
     Serial.print(code.v[i], DEC);
@@ -36,14 +63,14 @@ bool DoesCodesMatch(struct RfidCode& a, struct RfidCode& b) {
     if(a.v[i]==b.v[i])
       numberOfMatches++;
   }
-
+/*
   if(numberOfMatches<RFID_SIZE) {
     Serial.print("Number of matches: ");
     Serial.print(numberOfMatches);
   }
   else
     Serial.print("Full Match!!!!");
-
+*/
   return numberOfMatches==RFID_SIZE;
 }
 /*
@@ -62,17 +89,25 @@ bool IsValidCode(struct RfidCode& codeFromReader) {
 */
 // Returns true if the specified code is the controlling code (used for updating the list of valid codes)
 bool IsControlCode(struct RfidCode& codeFromReader) {
-  struct RfidCode expected = {57,49,66,67,49,66,3,2,49,48,48,48,50,54};
-  return DoesCodesMatch(codeFromReader, expected);
+  int numOfTags = sizeof(expected)/sizeof(expected[0]);
+  for(int i=0; i<numOfTags; i++) {
+    if(DoesCodesMatch(codeFromReader, expected[i])==true) {
+      Serial.print("\nIdentified Tag "); Serial.print(i);
+      return true;
+    }
+  }
+  return false;
 }
 
 
 void openGate() {
-  Serial.print("Opening Gate");
+  Serial.print("Opening Gate for 5 sec...");
 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
-  delay(10000);
+  delay(5000);
   digitalWrite(GATE_CONTROL_PIN, LOW);
+
+  Serial.print("Closed Gate\n");
 }
 
 struct RfidCode r;
@@ -98,7 +133,6 @@ void loop() {
       printCode(r);
       // TODO: support state machine. add robustness by reading the same code several times for it to be considered as "read"
       if(IsControlCode(r)) {
-        Serial.print(" Found Controlling code, replace with new RFID Card" );
         openGate();
         RFID.flush(); // Flush all serial bytes read, otherwise, the controller will keep openning the door according to correcrt RFID Codes that remains in his buffer
       }
