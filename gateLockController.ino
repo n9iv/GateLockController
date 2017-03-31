@@ -7,6 +7,8 @@
  * Brown    = Relay Middle to 
  */
 
+bool DEBUGGING = false;
+
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 
@@ -27,13 +29,13 @@ struct RfidCode expected[] = {
                               {48,49,54,56,53,70,3,2,49,48,48,48,50,54}, // 0002490728
                               {48,68,70,67,67,55,3,2,49,48,48,48,50,54}, // 0002493948
                               {68,67,66,65,69,65,3,2,48,68,48,48,56,49}, // 0008510650
-                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776
+                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776 // sharon
                               {52,49,49,52,54,51,3,2,49,48,48,48,50,54}, // 0002507028
                               {65,69,49,54,51,52,3,2,48,68,48,48,56,49}, // 0008498710
                               {51,52,51,51,51,49,3,2,49,48,48,48,50,54}, // 0002503731
                               {65,69,55,56,50,54,3,2,56,53,48,48,55,53}  // Ad's key
                              };
-// !!! DELETE THE RETURN TO BE DETECT NEW CODE NUMBER
+
 void printCode(struct RfidCode& code) {
   return; 
   
@@ -54,6 +56,7 @@ void setup() {
   RFID.begin(9600);
 
   pinMode(GATE_CONTROL_PIN, OUTPUT);  
+  Serial.print("Setup completed. Controller ready!\n");
 }
 
 // Reutnrs true if a and b are matched by byte comparison. 
@@ -93,6 +96,7 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
   for(int i=0; i<numOfTags; i++) {
     if(DoesCodesMatch(codeFromReader, expected[i])==true) {
       Serial.print("\nIdentified Tag "); Serial.print(i);
+      Serial.print("\n");
       return true;
     }
   }
@@ -101,13 +105,20 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 
 
 void openGate() {
-  Serial.print("Opening Gate for 5 sec...");
+  Serial.print("Opening Gate for 5 sec...\n");
 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
   delay(5000);
   digitalWrite(GATE_CONTROL_PIN, LOW);
 
   Serial.print("Closed Gate\n");
+}
+
+int shiftRight(RfidCode* code) {
+  int first = code->v[0];
+  for(int i=0; i<RFID_SIZE; i++)
+    code->v[i]=code->v[i+1];
+  return first;
 }
 
 struct RfidCode r;
@@ -130,15 +141,24 @@ void loop() {
     r.v[c] = i;
     c++;
     if(c==RFID_SIZE) {
-      printCode(r);
+      if(DEBUGGING)
+        printCode(r);
       // TODO: support state machine. add robustness by reading the same code several times for it to be considered as "read"
       if(IsControlCode(r)) {
         openGate();
         RFID.flush(); // Flush all serial bytes read, otherwise, the controller will keep openning the door according to correcrt RFID Codes that remains in his buffer
+        c=0;
       }
-      Serial.print("\n");
-      c=0;
-      delay(150);
+      else {
+        int discardedChar = shiftRight(&r);
+        if(DEBUGGING) {
+          Serial.print(discardedChar, DEC);
+          Serial.print(" discarded\n");
+        }
+        c--;
+      }
+      
+      //delay(50);
     }    
   }
 }
