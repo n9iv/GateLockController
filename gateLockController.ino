@@ -108,7 +108,7 @@ void openGate() {
   Serial.print("Opening Gate for 5 sec...\n");
 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
-  delay(5000);
+  delay(2500);
   digitalWrite(GATE_CONTROL_PIN, LOW);
 
   Serial.print("Closed Gate\n");
