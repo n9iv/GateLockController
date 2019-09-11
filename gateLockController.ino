@@ -1,3 +1,5 @@
+#define APPVERSION 2.01 // update every push to git
+
 /* Connections:
  * Yellow   = Digital4 to RelayIn1
  * Green    = Digital2 to RF control
@@ -7,6 +9,7 @@
  * Brown    = Relay Middle to 
  */
 
+// turn DEBUGGING  to true to print keys
 bool DEBUGGING = false;
 
 #include <SoftwareSerial.h>
@@ -37,7 +40,8 @@ struct RfidCode expected[] = {
                              };
 
 void printCode(struct RfidCode& code) {
-  return; 
+  if(DEBUGGING==false)
+    return; 
   
   Serial.print("{");
   for(int i=0; i<RFID_SIZE-1; i++) {
@@ -54,9 +58,11 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   RFID.begin(9600);
-
   pinMode(GATE_CONTROL_PIN, OUTPUT);  
-  Serial.print("Setup completed. Controller ready!\n");
+  
+  Serial.print("Setup completed. Controller ver ");
+  Serial.print(APPVERSION);
+  Serial.print(" ready!\n");
 }
 
 // Reutnrs true if a and b are matched by byte comparison. 
@@ -104,8 +110,8 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 }
 
 
-void openGate() {
-  Serial.print("Opening Gate for 5 sec...\n");
+void openGate() {  
+  Serial.print("Opening Gate for 2.5 sec...\n");
 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
   delay(2500);
@@ -158,7 +164,7 @@ void loop() {
         c--;
       }
       
-      //delay(50);
+      delay(5);
     }    
   }
 }
