@@ -28,11 +28,11 @@ struct RfidCode {
 struct RfidCode expected[] = { 
                               {57,49,66,67,49,66,3,2,49,48,48,48,50,54}, // 0002527676
                               {69,52,69,68,56,52,3,2,48,68,48,48,56,48}, // 0008447213
-                              {49,53,48,56,53,56,3,2,48,70,48,48,52,65}, // 0004855048
+                              {49,53,48,56,53,56,3,2,48,70,48,48,52,65}, // 0004855048 // Sharon
                               {48,49,54,56,53,70,3,2,49,48,48,48,50,54}, // 0002490728
                               {48,68,70,67,67,55,3,2,49,48,48,48,50,54}, // 0002493948
                               {68,67,66,65,69,65,3,2,48,68,48,48,56,49}, // 0008510650
-                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776 // sharon
+                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776 // IDO
                               {52,49,49,52,54,51,3,2,49,48,48,48,50,54}, // 0002507028
                               {65,69,49,54,51,52,3,2,48,68,48,48,56,49}, // 0008498710
                               {51,52,51,51,51,49,3,2,49,48,48,48,50,54}, // 0002503731
@@ -59,6 +59,10 @@ void setup() {
   Serial.begin(9600);
   RFID.begin(9600);
   pinMode(GATE_CONTROL_PIN, OUTPUT);  
+
+  // initialize digital pin LED_BUILTIN as an output to blink intenal led when gate is open
+  pinMode(LED_BUILTIN, OUTPUT);
+
   
   Serial.print("Setup completed. Controller ver ");
   Serial.print(APPVERSION);
@@ -68,7 +72,7 @@ void setup() {
 // Reutnrs true if a and b are matched by byte comparison. 
 bool DoesCodesMatch(struct RfidCode& a, struct RfidCode& b) {
   int numberOfMatches = 0;
-  for(int i=0; i<=RFID_SIZE;i++) {
+  for(int i=0; i<RFID_SIZE;i++) {
     if(a.v[i]==b.v[i])
       numberOfMatches++;
   }
@@ -111,18 +115,21 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 
 
 void openGate() {  
-  Serial.print("Opening Gate for 2.5 sec...\n");
+  if(DEBUGGING)
+    Serial.print("Opening Gate for 2.5 sec...\n");
 
+  digitalWrite(LED_BUILTIN, HIGH); 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
   delay(2500);
   digitalWrite(GATE_CONTROL_PIN, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
 
   Serial.print("Closed Gate\n");
 }
 
 int shiftRight(RfidCode* code) {
   int first = code->v[0];
-  for(int i=0; i<RFID_SIZE; i++)
+  for(int i=0; i<RFID_SIZE-1; i++)
     code->v[i]=code->v[i+1];
   return first;
 }
