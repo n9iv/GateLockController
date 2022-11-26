@@ -1,10 +1,4 @@
-// CHANGE LOG:
-// Added watchdog
-// fixed array out of range warning
-// added Internal board led
-// Added 5 new keys
-#define APPVERSION 2.04 // update every push to git 
-
+#define APPVERSION 2.01 // update every push to git
 
 /* Connections:
  * Yellow   = Digital4 to RelayIn1
@@ -15,12 +9,11 @@
  * Brown    = Relay Middle to 
  */
 
-// turn DEBUGGING  to true to print keys - set monitor to 115K
+// turn DEBUGGING  to true to print keys
 bool DEBUGGING = false;
 
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
-#include <Adafruit_SleepyDog.h>
 
 SoftwareSerial RFID(2,3);
 
@@ -34,22 +27,15 @@ struct RfidCode {
 
 struct RfidCode expected[] = { 
                               {57,49,66,67,49,66,3,2,49,48,48,48,50,54}, // 0002527676
-                              {69,52,69,68,56,52,3,2,48,68,48,48,56,48}, // 0008447213 // Revital
-                              {49,53,48,56,53,56,3,2,48,70,48,48,52,65}, // 0004855048
+                              {69,52,69,68,56,52,3,2,48,68,48,48,56,48}, // 0008447213
+                              {49,53,48,56,53,56,3,2,48,70,48,48,52,65}, // 0004855048 // Sharon
                               {48,49,54,56,53,70,3,2,49,48,48,48,50,54}, // 0002490728
                               {48,68,70,67,67,55,3,2,49,48,48,48,50,54}, // 0002493948
                               {68,67,66,65,69,65,3,2,48,68,48,48,56,49}, // 0008510650
-                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776 // sharon
+                              {65,48,57,56,55,68,3,2,48,70,48,48,52,65}, // 0004890776 // IDO
                               {52,49,49,52,54,51,3,2,49,48,48,48,50,54}, // 0002507028
                               {65,69,49,54,51,52,3,2,48,68,48,48,56,49}, // 0008498710
                               {51,52,51,51,51,49,3,2,49,48,48,48,50,54}, // 0002503731
-                              {49,69,48,48,65,66,51,53,70,49,55,49,3,2}, // S1
-                              {65,48,48,48,67,68,65,52,49,56,68,3,2,49}, // S2
-                              {65,48,48,48,68,54,67,69,48,57,66,3,2,49}, // S3
-                              {65,48,48,48,68,55,68,54,69,48,52,3,2,49}, // S4
-                              {65,48,48,48,69,48,68,53,49,52,56,3,2,49}, // R1  
-                              {48,65,65,55,65,52,69,56,48,3,2,49,69,48}, // K1 (under U5 Key with chip
-                              {48,48,65,65,68,56,55,53,49,57,3,2,49,69}, // K2
                               {65,69,55,56,50,54,3,2,56,53,48,48,55,53}  // Ad's key
                              };
 
@@ -70,19 +56,13 @@ void printCode(struct RfidCode& code) {
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200); // for debug
+  Serial.begin(9600);
   RFID.begin(9600);
-  pinMode(LED_BUILTIN, OUTPUT);
-  
   pinMode(GATE_CONTROL_PIN, OUTPUT);  
 
+  // initialize digital pin LED_BUILTIN as an output to blink intenal led when gate is open
+  pinMode(LED_BUILTIN, OUTPUT);
 
-  // Setup Watchdog
-  int countdownMS = Watchdog.enable(8000);
-  Serial.print("Enabled the watchdog with max countdown of ");
-  Serial.print(countdownMS, DEC);
-  Serial.println(" milliseconds!");
-  Serial.println();
   
   Serial.print("Setup completed. Controller ver ");
   Serial.print(APPVERSION);
@@ -96,6 +76,14 @@ bool DoesCodesMatch(struct RfidCode& a, struct RfidCode& b) {
     if(a.v[i]==b.v[i])
       numberOfMatches++;
   }
+/*
+  if(numberOfMatches<RFID_SIZE) {
+    Serial.print("Number of matches: ");
+    Serial.print(numberOfMatches);
+  }
+  else
+    Serial.print("Full Match!!!!");
+*/
   return numberOfMatches==RFID_SIZE;
 }
 /*
@@ -127,11 +115,14 @@ bool IsControlCode(struct RfidCode& codeFromReader) {
 
 
 void openGate() {  
-  Serial.print("Opening Gate for 2.5 sec...\n");
+  if(DEBUGGING)
+    Serial.print("Opening Gate for 2.5 sec...\n");
 
+  digitalWrite(LED_BUILTIN, HIGH); 
   digitalWrite(GATE_CONTROL_PIN, HIGH);
   delay(2500);
   digitalWrite(GATE_CONTROL_PIN, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
 
   Serial.print("Closed Gate\n");
 }
@@ -145,7 +136,7 @@ int shiftRight(RfidCode* code) {
 
 struct RfidCode r;
 int c = 0;
-int ledState = HIGH;
+
 /*
  * The loop function reads an RFID code (14 bytes) and then handles it according to its internal state machine.
  * The state machine has to following states:
@@ -179,18 +170,8 @@ void loop() {
         }
         c--;
       }
-
+      
       delay(5);
     }    
   }
-  /*
-  delay(1);
-  if(ledState==HIGH)
-      ledState = LOW;
-  else
-    ledState = HIGH;
-  digitalWrite(LED_BUILTIN, ledState);
-*/
-//  Serial.print(" Watchdog reset\n");
-  Watchdog.reset();
 }
